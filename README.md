@@ -1,54 +1,32 @@
-# DGX Spark / GB10 实测笔记
+# DGX Spark / GB10 实测资料索引
 
-四台 DGX Spark（GB10，128GB 统一内存）组成的本地推理集群，从装机、调网、换量化到跑通生产，全程实测记录。所有数字来自本机实测，不引用别人的跑分。
+四台 DGX Spark（GB10，128GB 统一内存）本地推理集群的实测记录。按主题拆成独立仓库，方便单独引用和更新。
 
 **交流群**：QQ 群 **1128010665**（加群备注：GitHub）
 
----
+## 仓库列表
 
-## 目录
-
-| 文档 | 内容 | 关键结论 |
+| 仓库 | 内容 | 关键数字 |
 |---|---|---|
-| [01 四机 DeepSeek-V4.1-Flash MXFP4](docs/01-四机DeepSeek-V4.1-Flash-MXFP4实测.md) | 生产部署全量数据 | 解码 C1 106.7 / C4 222.8 / C8 317.0 / C16 439.9 tok/s；干净预填 ≈5,000 tok/s |
-| [02 MiniMax-M3.1-Flash 双方案实测](docs/02-MiniMax-M3.1-Flash-双方案实测.md) | 四机 vLLM vs 单机 EXL3 | 单机 EXL3 可用（19.7 tok/s，8K ctx）；四机 vLLM 卡在 sm_121 的 MXFP8 内核 |
-| [03 RTX 40 系 Ada 解锁资料整理](docs/03-RTX40系Ada解锁-资料整理.md) | gpu-unlock-ada 逐卡数据 | 4090 FP16 165.6→331.6 TF/s（2×），但 FP8 无收益、"全系支持"是夸大 |
-| [04 异构 PD 实验室数据整理](docs/04-异构PD实验室-数据整理.md) | 社区 14 个实验、9 份 CSV | 小卡做 Prefill 真的有效：3060 单卡预填 1589 > 395 整机 970 |
-| [05 显卡性价比测算](docs/05-显卡性价比测算.md) | 9 张卡、三个维度 | 3080 20G 每千元 26.5 TFLOPS；96G PRO 每千元显存仅 0.53G |
-
-`data/` 下是社区 `heterogeneous-gpu-pd-lab` 的原始 CSV（11 份），已随文档一并归档，方便复核。
-
-## 附件（Release）
-
-- 🎬 [145 秒竖屏视频](https://github.com/hdcdn/dgx-spark-lab/releases/download/v1.0/rtx40-unlock-145s.mp4)：RTX 40 系解锁原理 + 逐卡实测
-- 📊 [显卡性价比对照表](https://github.com/hdcdn/dgx-spark-lab/releases/download/v1.0/gpu-price-perf-table.png)：一张图看完正式支持 / 实验 / 未支持
-
----
+| [deepseek-v41-flash-4x-gb10](https://github.com/hdcdn/deepseek-v41-flash-4x-gb10) | 四机 TP4 跑 DeepSeek-V4.1-Flash MXFP4 | C1 106.7 / C8 317.0 / C16 439.9 tok/s，预填 ≈5,000 |
+| [minimax-m31-flash-gb10](https://github.com/hdcdn/minimax-m31-flash-gb10) | MiniMax-M3.1-Flash 双方案（单机 EXL3 vs 四机 vLLM） | 单机 EXL3 19.7 tok/s 可用；四机 vLLM 崩在 SM121 |
+| [rtx40-ada-unlock-notes](https://github.com/hdcdn/rtx40-ada-unlock-notes) | RTX 40 系 Ada 解锁资料整理（含 145s 视频） | 4090 165.6 → 331.6 TF/s，FP8 无收益 |
+| [heterogeneous-pd-lab-data](https://github.com/hdcdn/heterogeneous-pd-lab-data) | 异构 PD 实验室 14 个实验、11 份 CSV | 3060 单卡预填 1589 > 395 整机 970 |
+| [gpu-price-perf-ranking](https://github.com/hdcdn/gpu-price-perf-ranking) | 9 张显卡三维性价比测算 | 3080 20G 每千元 26.5 TFLOPS |
 
 ## 硬件与拓扑
 
-- 4 × DGX Spark（GB10，128GB 统一内存，sm_121）
-- 200GbE RoCE 互联，**无交换机环形拓扑**
-- 4 机各自跑一个 rank，张量并行 TP4（vLLM mp 后端 / SGLang）
-- 驱动 DGX OS 580 / CUDA 13.0；NCCL 2.30.7（含 switchless ring 补丁）
+- 4 × DGX Spark（GB10，sm_121，128GB 统一内存）
+- 200GbE RoCE，**无交换机环形拓扑**
+- TP4（每机一个 rank），DGX OS 580 / CUDA 13.0，NCCL 2.30.7（含 switchless ring 补丁）
 
-## 这份笔记想解决什么
+## 记录原则
 
-网上关于 GB10 的资料，绝大多数是「单机跑了个 7B」或者「官方 benchmark 截图」。真正想知道的是：
-
-- 四台拼起来，**生产可用**的吞吐到底多少？
-- 1M 上下文是纸面参数还是能用的？
-- 新模型（比如 MiniMax-M3.1-Flash）在 sm_121 上到底能不能跑？
-- 哪些"性价比神卡"的说法能复现、哪些是营销？
-
-所以文档里既有跑通的数据，也有**跑不通的失败记录**（02 篇三分之一篇幅在讲内核崩在哪一行）。失败记录往往比成功更有用。
-
-## 引用声明
-
-- 所有实测数字均为本地测得，测试方法写在每篇文档里（并发档位、提示词、是否剥离 TTFT、缓存是否清空）
-- 引用社区数据时均标注了出处，并保留原始 CSV
+- 所有数字本地实测，测试口径写在各自仓库里（并发档位、提示词、是否剥离 TTFT、缓存是否清空）
+- 引用社区数据必标注出处，并附原始 CSV
+- 失败记录与成功记录同等重要——MiniMax 那篇有三分之一在讲崩在哪一行
 - 仓库内 IP、密钥、内网地址已脱敏
 
 ## 许可
 
-文档采用 CC BY-NC-SA 4.0，CSV 数据来自原仓库（遵循其原始许可）。
+文档采用 CC BY-NC-SA 4.0，社区 CSV 遵循其原始许可。
