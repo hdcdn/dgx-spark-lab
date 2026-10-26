@@ -18,6 +18,11 @@
 
 `data/` 下是社区 `heterogeneous-gpu-pd-lab` 的原始 CSV（11 份），已随文档一并归档，方便复核。
 
+## 附件（Release）
+
+- 🎬 [145 秒竖屏视频](https://github.com/hdcdn/dgx-spark-lab/releases/download/v1.0/40%E7%B3%BBAda%E8%A7%A3%E9%94%81-145s-%E6%96%B0%E9%97%BB%E6%92%AD%E6%8A%A5%E7%89%88.mp4)：RTX 40 系解锁原理 + 逐卡实测
+- 📊 [显卡性价比对照表](https://github.com/hdcdn/dgx-spark-lab/releases/download/v1.0/RTX40%E7%B3%BB%E8%A7%A3%E9%94%81-%E5%AF%B9%E6%AF%94%E8%A1%A8%E6%A0%BC.png)：一张图看完正式支持 / 实验 / 未支持
+
 ---
 
 ## 硬件与拓扑
